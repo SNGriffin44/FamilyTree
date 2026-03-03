@@ -1,0 +1,16 @@
+register(VIEW, 
+         id    = 'familyTreeButBetter',
+         name  = _("Better Tree"),
+         description =  _("Improves upon base family tree adding better visuals and functionality"),
+         version = '1.0.0',
+         gramps_target_version = '6.0',
+         status = STABLE,
+         fname = 'project.py',
+         authors = ["Steven N. Griffin"],
+         authors_email = ["sg2081@hw.ac.uk"],
+         maintainers = ["Steven N. Griffin"],
+         maintainers_email = ["sg2081@hw.ac.uk"],
+         category = ("Relationships", _("Charts")),
+         viewclass = 'BetterTreeView',
+
+         )
