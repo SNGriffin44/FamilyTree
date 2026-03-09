@@ -188,6 +188,25 @@ class _PersonWidgetBase(Gtk.DrawingArea):
                         media_path_full(dbstate.db, obj.get_path()),
                         rectangle=photo.get_rectangle(),
                     )
+        else: #steven: person.medialist means an image has been uploaded to a specific person, therefore no media list means no photos added, so a placeholder needed
+            image_path = os.path.abspath(__file__)
+            '''
+            just_dir = image_path.find("project.py")
+            image_path = f'{image_path[:just_dir]}__imgs__/'
+            
+            old method to get rid of the file name to traverse to next dir, however incase if differnences in others file structures it was changed.
+            '''
+
+            just_dir = os.path.dirname(image_path)
+            image_path = f'{just_dir}/__imgs__/'
+            
+            gender = self.person.get_gender()
+            match gender:
+                case 1:
+                    image_path = f'{image_path}men-icon.png'
+                case 0:
+                    image_path = f'{image_path}women-icon.png'
+            
         return image_path
 
 
@@ -213,7 +232,7 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
         self.add_events(Gdk.EventMask.LEAVE_NOTIFY_MASK)
         self.alive = alive
         self.maxlines = maxlines
-        print(self.maxlines)
+        #print(self.maxlines)
         self.hightlight = False
         self.connect("draw", self.draw)
         self.text = ""
@@ -234,7 +253,7 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
             temp[0] = f'{temp[0]}{temp[1][x:]}'
             temp[1] = temp[1][:x]
             
-            print(f'gender: {gender}')
+            #print(f'gender: {gender}')
             
             self.text =f'{temp[1]} {temp[0]}' #Steven: used f string to reverse order of names to more forename then surname
         else:
@@ -244,7 +263,7 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
             self.bordercolor, self.bgcolor, = color_graph_box(alive, gender) #Steven: due to graph box being in different file, ive switched variables to still get benefits of gender colour, but applying to outline instead, trying to make tree more uniform
             #self.bordercolour= self.bgcolor    
             self.bgcolor = "#f3f1eb" #one standard background colour for filled in entries
-        print(color_graph_box(alive, gender))
+        #print(color_graph_box(alive, gender))
         if tags and person:
             for tag_handle in person.get_tag_list():
                 # For the complete tag, don't modify the default color
@@ -252,7 +271,7 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
                 tag = dbstate.db.get_tag_from_handle(tag_handle)
                 if tag.get_color() not in ("#000000", "#000000000000"):
                     self.bgcolor = tag.get_color()
-        print(f'colour: {self.bgcolor}')
+        #print(f'colour: {self.bgcolor}')
         self.bgcolor = hex_to_rgb_float(self.bgcolor)
         self.bordercolor = hex_to_rgb_float(self.bordercolor)
 
@@ -265,8 +284,10 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
         self.img_surf = None
         if image:
             image_path = self.get_image(dbstate, person)
+            print(os.path.exists(image_path))
             if image_path and os.path.exists(image_path):
                 with open(image_path, "rb") as image:
+                    print("supp")
                     self.img_surf = cairo.ImageSurface.create_from_png(image)
 
         # enable mouse-over
@@ -293,7 +314,7 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
         Creat new cairo object and draw in it all (borders, background and etc.)
         witout text.
         """
-        print(self.person)
+        #print(self.person)
         def _boxpath(context, alloc):
             # Create box shape and store path
             # context.new_path()
