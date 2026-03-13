@@ -100,6 +100,21 @@ _CREM = _("crem.", "short for cremated")
 _MALE = "♂"
 _FEMALE = "♀"
 
+DARKMODE = {
+    "background": b"* { background-color: #3b3b3b; }",
+    "line": (1,1,1) 
+
+}
+
+LIGHTMODE = {
+    "background": b"*{ background-color: #F6F5F4; }",
+    "line": (0,0,0)
+} 
+
+dark = False
+colorScheme = LIGHTMODE
+
+
 
 class _PersonWidgetBase(Gtk.DrawingArea):
     """
@@ -280,11 +295,11 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
         self.bgcolor = hex_to_rgb_float("#f3f1eb")#self.bgcolor)
         '''
         
-
+        
         self.img_surf = None
         if image:
             image_path = self.get_image(dbstate, person)
-            print(os.path.exists(image_path))
+            #print(os.path.exists(image_path))
             if image_path and os.path.exists(image_path):
                 with open(image_path, "rb") as image:
                     print("supp")
@@ -315,6 +330,8 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
         witout text.
         """
         #print(self.person)
+        
+     
         def _boxpath(context, alloc):
             # Create box shape and store path
             # context.new_path()
@@ -365,7 +382,7 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
 
         # widget area for debugging
         ##context.rectangle(0, 0, alloc.width, alloc.height)
-        ##context.set_source_rgb(1, 0, 1)
+        ##context.set_source_rgb(0, 0, 0)
         ##context.fill_preserve()
         ##context.stroke()
 
@@ -376,6 +393,7 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
         context.translate(3, 3)
         _boxpath(context, alloc)
         context.set_source_rgba(*(self.bordercolor[:3] + (0.4,)))
+        #context.set_source_rgba(0,0,0)
         context.fill_preserve()
         context.set_line_width(0)
         context.stroke()
@@ -389,6 +407,8 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
         # background (while clipped)
         _boxpath(context, alloc)
         context.set_source_rgb(*self.bgcolor[:3])
+        #context.set_source_rgb(0,0,0)
+        #print(*self.bgcolor[:3])
         context.fill_preserve()
         context.stroke()
 
@@ -415,6 +435,7 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
         else:
             context.set_line_width(2)
         context.set_source_rgb(*self.bordercolor[:3])
+        #context.set_source_rgb(0,0,1)
         context.stroke()
         context.restore()
         context.save()
@@ -423,6 +444,7 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
         context.move_to(5, 4)
         fg_color = get_contrast_color(self.bgcolor)
         context.set_source_rgb(*fg_color[:3])
+       # print(*fg_color[:3])
         PangoCairo.show_layout(context, self.textlayout)
         context.restore()
         context.get_target().flush()
@@ -449,8 +471,10 @@ class LineWidget(Gtk.DrawingArea):
         """
         Redraw the contents of the widget.
         """
+        #c= Gtk.color(55,55,55)
+        #widget.modify_bg(Gtk.StateType.NORMAL, c)
         self.set_size_request(20, 20)
-        context.set_source_rgb(0.0, 0.0, 0.0)
+        context.set_source_rgb(*colorScheme.get('line')) #linecolour
         # pylint: disable-msg=E1101
         alloc = self.get_allocation()
         child = self.child_box.get_allocation()
@@ -497,7 +521,7 @@ class LineWidget(Gtk.DrawingArea):
         """
         Draw a link between parent and child.
         """
-   
+        
         cr.set_line_width(3)
         if rela:
             cr.set_dash([], 0)  # SOLID
@@ -543,7 +567,7 @@ class LineWidget2(Gtk.DrawingArea):
         Redraw the contents of the widget.
         """
         self.set_size_request(20, -1)
-        context.set_source_rgb(0.0, 0.0, 0.0)
+        context.set_source_rgb(0.0, 0.0, 0)
         # pylint: disable-msg=E1101
         alloc = self.get_allocation()
 
@@ -722,6 +746,12 @@ class BetterTreeView(NavigationView):
         )
         self.scrolledwindow.add_events(Gdk.EventMask.SCROLL_MASK)
         self.scrolledwindow.connect("scroll-event", self.cb_bg_scroll_event)
+        
+        style = self.scrolledwindow.get_style_context()
+        css = Gtk.CssProvider()
+        css.load_from_data(colorScheme.get('background'))
+        style.add_provider(css, Gtk.STYLE_PROVIDER_PRIORITY_USER)
+        
         event_box = Gtk.EventBox()
         # Required for drag-scroll events and popup menu
         event_box.add_events(
@@ -748,7 +778,7 @@ class BetterTreeView(NavigationView):
         self.table.set_row_spacing(1)
         self.table.set_column_spacing(0)
 
-        return self.scrolledwindow
+        return self.scrolledwindow           
 
     additional_ui = [  # Defines the UI string for UIManager
         """
@@ -834,6 +864,16 @@ class BetterTreeView(NavigationView):
         <property name="homogeneous">False</property>
       </packing>
     </child>
+    <child groups='RO'>
+       <object class ="GtkToolButton">
+        <property name = "icon-name">weather-clear-night</property>
+        <property name = "action-name">win.Darkmode</property>
+        <property name = "tooltip_text" translatable = "yes">""""""Switch display to darkmode </property>
+        <property name = "label" translatable="yes">Darkmode</property>
+       </object>
+   
+    </child>
+
     </placeholder>
     """,
     ]
@@ -856,6 +896,7 @@ class BetterTreeView(NavigationView):
         self._add_action("FilterEdit", self.cb_filter_editor)
         self._add_action("F2", self.kb_goto_home, "F2")
         self._add_action("PRIMARY-J", self.jump, "<PRIMARY>J")
+        self._add_action("Darkmode", self.toggle_dark_mode)
 
     def cb_filter_editor(self, *obj):
         """
@@ -865,6 +906,20 @@ class BetterTreeView(NavigationView):
             FilterEditor("Person", CUSTOM_FILTERS, self.dbstate, self.uistate)
         except WindowActiveError:
             return
+
+    def toggle_dark_mode(self, state, *obj):
+        global dark
+        dark = not dark
+       
+        global colorScheme
+        if dark == False:
+            
+            colorScheme = LIGHTMODE
+        else:
+            
+            colorScheme = DARKMODE
+        self.build_tree()
+        print(colorScheme)
 
     def build_tree(self):
         """
@@ -964,6 +1019,12 @@ class BetterTreeView(NavigationView):
         Rebuild tree with root person_handle.
         Called from many fuctions, when need full redraw tree.
         """
+
+        style = self.scrolledwindow.get_style_context()
+        css = Gtk.CssProvider()
+        css.load_from_data(colorScheme.get('background'))
+        style.add_provider(css, Gtk.STYLE_PROVIDER_PRIORITY_USER)
+
         person = None
         if person_handle:
             person = self.dbstate.db.get_person_from_handle(person_handle)
@@ -1329,6 +1390,7 @@ class BetterTreeView(NavigationView):
             ):
                 if lst[i] and lst[i][2]:
                     text = self.format_helper.format_relation(lst[i][2], 1, True)
+                    
                 else:
                     text = " "
                 label = Gtk.Label(label=text)
@@ -1336,6 +1398,7 @@ class BetterTreeView(NavigationView):
                 label.set_use_markup(True)
                 label.set_line_wrap(True)
                 label.set_halign(Gtk.Align.START)
+               
                 if self.tree_style in [0, 2]:
                     x_pos = (1 + _width) * (level + 1) + 1
                     y_pos = _delta // 2 + offset * _delta - 1 + _height // 2
