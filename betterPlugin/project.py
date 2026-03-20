@@ -114,7 +114,7 @@ LIGHTMODE = {
 dark = False
 colorScheme = LIGHTMODE
 
-
+expanded = False
 
 class _PersonWidgetBase(Gtk.DrawingArea):
     """
@@ -246,17 +246,26 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
         # Required for tooltip and mouse-over
         self.add_events(Gdk.EventMask.LEAVE_NOTIFY_MASK)
         self.alive = alive
-        self.maxlines = maxlines
+        if expanded:
+            self.maxlines = 5
+        else:
+            self.maxlines = maxlines
         #print(self.maxlines)
         self.hightlight = False
         self.connect("draw", self.draw)
+       
         self.text = ""
         if self.person:
+            #print(self.person.get_note_list())
+            #print(self.person.get_address_list())
+            #a = self.person.get_address_list()[0]#"notes", dbstate.db.get_note_from_handle(self.person.get_note_list()[0]).get())
+            print(self.retrieve_job())#.get("occupation"))
             self.text = self.format_helper.format_person(
-                self.person, 3, True
+                self.person, self.maxlines, True
             )
             gender = self.person.get_gender()
             temp = self.text.split(',')
+            print(temp)
             x = temp[1].find('\n') #Steven: when switching name order, the forename came packaged with the birth and death date, which seems to happen in an external file to this, so I've isolated the cutoff points and switched them to be with the surname.
             match gender:
                 case 1:
@@ -267,10 +276,23 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
                     self.bordercolor = "#feccf0"
             temp[0] = f'{temp[0]}{temp[1][x:]}'
             temp[1] = temp[1][:x]
-            
+            if temp[0][-1].find('\n') == -1:
+                print(True)
+            else:
+                print("test2", temp[0][-1])
+            final = ""
+            t = temp[0].split("\n") #steven: had an issue on the expansion feature where it was randomaly adding new lines, this ensures only 1 new line per data piece 
+            for tt in t:
+                if len(tt.strip()) != 0:
+                    final = final + tt + "\n"
+
+            print(t)
             #print(f'gender: {gender}')
-            
-            self.text =f'{temp[1]} {temp[0]}' #Steven: used f string to reverse order of names to more forename then surname
+            if (not expanded):
+                self.text =f'{temp[1]}{final}' #Steven: used f string to reverse order of names to more forename then surname
+            else:
+                 exp = f'{self.retrieve_job()}\n{self.retieve_addr()}\n{self.retrieve_notes(dbstate)}'
+                 self.text = f'{temp[1]}{final}{exp}'
         else:
             gender = None
         self.bgcolor, self.bordercolor = color_graph_box(alive, gender)
@@ -311,6 +333,33 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
         self.connect("leave-notify-event", self.cb_on_leave)
         self.context = None
         self.textlayout = None
+
+    def retrieve_notes(self, dbstate): #steven
+        handles = self.person.get_note_list()
+        notes = []
+        for note in handles:
+            n = dbstate.db.get_note_from_handle(note)
+            n = n.get()
+            notes.append(n)
+        
+        return notes
+    
+    def retieve_addr(self): #steven
+        addrs = self.person.get_address_list()
+        addresses = []
+        for place in addrs:
+            a = (place.street, place.locality)
+            addresses.append(a)
+        return addresses
+    
+    def retrieve_job(self): #steven
+        attrs = self.person.get_attribute_list()
+        for attr in attrs:
+            if attr.get_type() == "Occupation":
+                return attr.get_value()
+        return ""
+            
+
 
     def cb_on_enter(self, widget, event):
         """On mouse-over highlight border"""
@@ -874,6 +923,16 @@ class BetterTreeView(NavigationView):
    
     </child>
 
+     <child groups='RO'>
+       <object class ="GtkToolButton">
+        <property name = "icon-name">view-fullscreen</property>
+        <property name = "action-name">win.Expand</property>
+        <property name = "tooltip_text" translatable = "yes">""""""Switch to a more detailed view </property>
+        <property name = "label" translatable="yes">Expand</property>
+       </object>
+   
+    </child>
+
     </placeholder>
     """,
     ]
@@ -897,6 +956,7 @@ class BetterTreeView(NavigationView):
         self._add_action("F2", self.kb_goto_home, "F2")
         self._add_action("PRIMARY-J", self.jump, "<PRIMARY>J")
         self._add_action("Darkmode", self.toggle_dark_mode)
+        self._add_action("Expand", self.toggle_expand)
 
     def cb_filter_editor(self, *obj):
         """
@@ -907,7 +967,7 @@ class BetterTreeView(NavigationView):
         except WindowActiveError:
             return
 
-    def toggle_dark_mode(self, state, *obj):
+    def toggle_dark_mode(self, state, *obj): #steven
         global dark
         dark = not dark
        
@@ -920,6 +980,12 @@ class BetterTreeView(NavigationView):
             colorScheme = DARKMODE
         self.build_tree()
         print(colorScheme)
+
+    def toggle_expand(self, state, *obj): #steven
+        global expanded
+        expanded = not expanded
+
+        self.build_tree()
 
     def build_tree(self):
         """
