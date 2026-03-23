@@ -259,13 +259,13 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
             #print(self.person.get_note_list())
             #print(self.person.get_address_list())
             #a = self.person.get_address_list()[0]#"notes", dbstate.db.get_note_from_handle(self.person.get_note_list()[0]).get())
-            print(self.retrieve_job())#.get("occupation"))
+            #print(self.retrieve_job())#.get("occupation"))
             self.text = self.format_helper.format_person(
                 self.person, self.maxlines, True
             )
             gender = self.person.get_gender()
             temp = self.text.split(',')
-            print(temp)
+            #print(temp)
             x = temp[1].find('\n') #Steven: when switching name order, the forename came packaged with the birth and death date, which seems to happen in an external file to this, so I've isolated the cutoff points and switched them to be with the surname.
             match gender:
                 case 1:
@@ -276,23 +276,20 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
                     self.bordercolor = "#feccf0"
             temp[0] = f'{temp[0]}{temp[1][x:]}'
             temp[1] = temp[1][:x]
-            if temp[0][-1].find('\n') == -1:
-                print(True)
-            else:
-                print("test2", temp[0][-1])
+           
             final = ""
             t = temp[0].split("\n") #steven: had an issue on the expansion feature where it was randomaly adding new lines, this ensures only 1 new line per data piece 
             for tt in t:
                 if len(tt.strip()) != 0:
                     final = final + tt + "\n"
 
-            print(t)
+            #print(t)
             #print(f'gender: {gender}')
             if (not expanded):
-                self.text =f'{temp[1]}{final}' #Steven: used f string to reverse order of names to more forename then surname
+                self.text =f'{temp[1]} {final}' #Steven: used f string to reverse order of names to more forename then surname
             else:
                  exp = f'{self.retrieve_job()}\n{self.retieve_addr()}\n{self.retrieve_notes(dbstate)}'
-                 self.text = f'{temp[1]}{final}{exp}'
+                 self.text = f'{temp[1]} {final}{exp}'
         else:
             gender = None
         self.bgcolor, self.bordercolor = color_graph_box(alive, gender)
@@ -933,6 +930,17 @@ class BetterTreeView(NavigationView):
    
     </child>
 
+    <child groups = 'RO'>
+        <object class = "GtkToolButton">
+            <property name = "icon-name">edit-find-symbolic</property>
+            <property name = "action-name">win.findRelation</property>
+            <property name = "tooltip_text" translatable = "yes">""""""Find relation between two entities </property>
+            <property name = "label" translatable="yes">Find Relation</property>
+       </object>
+   
+    </child>
+            
+
     </placeholder>
     """,
     ]
@@ -957,6 +965,7 @@ class BetterTreeView(NavigationView):
         self._add_action("PRIMARY-J", self.jump, "<PRIMARY>J")
         self._add_action("Darkmode", self.toggle_dark_mode)
         self._add_action("Expand", self.toggle_expand)
+        self._add_action("findRelation", self.findRelation)
 
     def cb_filter_editor(self, *obj):
         """
@@ -966,6 +975,43 @@ class BetterTreeView(NavigationView):
             FilterEditor("Person", CUSTOM_FILTERS, self.dbstate, self.uistate)
         except WindowActiveError:
             return
+        
+    def findRelation(self, *obj):
+        handles = {} #dictionary to store ids vs the handles, so we can find the persons details
+        dialog = Gtk.Dialog(title = "Find Relationship", parent = self.uistate.window)
+        content = dialog.get_content_area()
+        Gtk.Box(Gtk.Orientation.HORIZONTAL, spacing = 10)
+
+        personOne = Gtk.ComboBoxText()
+        personTwo = Gtk.ComboBoxText()
+        content.pack_start(personOne, False, False, 10)
+        content.pack_start(personTwo, False, False, 10)
+        
+        count = 0
+        for person in self.dbstate.db.iter_people():
+            #print(vars(person.primary_name.surname_list[0]))
+            last = person.primary_name.surname_list[0]
+            count += 1
+            handles[count] = person.get_handle()
+            
+            if last.prefix == "":
+                personOne.append_text(f'{count}. {person.primary_name.first_name} {last.surname}')
+                personTwo.append_text(f'{count}. {person.primary_name.first_name} {last.surname}')
+            else:
+                personOne.append_text(f'{count}. {person.primary_name.first_name} {last.prefix} {last.surname}')
+                personTwo.append_text(f'{count}. {person.primary_name.first_name} {last.prefix} {last.surname}')
+
+        dialog.add_button("Find", Gtk.ResponseType.OK)
+        dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
+        dialog.show_all()
+        choice = dialog.run()
+        if choice == Gtk.ResponseType.CANCEL:
+            dialog.destroy()
+        elif choice == Gtk.ResponseType.OK:
+            print(handles)
+            t = (personOne.get_active_text()[:personOne.get_active_text().find(".")])
+            print(handles.get(int(t)))
+        dialog.destroy()
 
     def toggle_dark_mode(self, state, *obj): #steven
         global dark
@@ -979,7 +1025,7 @@ class BetterTreeView(NavigationView):
             
             colorScheme = DARKMODE
         self.build_tree()
-        print(colorScheme)
+        #print(colorScheme)
 
     def toggle_expand(self, state, *obj): #steven
         global expanded
