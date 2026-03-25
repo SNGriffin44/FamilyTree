@@ -110,11 +110,14 @@ LIGHTMODE = {
     "background": b"*{ background-color: #F6F5F4; }",
     "line": (0,0,0)
 } 
-
+pathIso = False
+savedList = []
 dark = False
 colorScheme = LIGHTMODE
 
 expanded = False
+chosenPath = []
+
 
 class _PersonWidgetBase(Gtk.DrawingArea):
     """
@@ -288,7 +291,7 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
             if (not expanded):
                 self.text =f'{temp[1]} {final}' #Steven: used f string to reverse order of names to more forename then surname
             else:
-                 exp = f'{self.retrieve_job()}\n{self.retieve_addr()}\n{self.retrieve_notes(dbstate)}'
+                 exp = f'💼 {self.retrieve_job()}\n📍 {",".join(self.retieve_addr())}\n{self.retrieve_notes(dbstate)}'
                  self.text = f'{temp[1]} {final}{exp}'
         else:
             gender = None
@@ -345,7 +348,7 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
         addrs = self.person.get_address_list()
         addresses = []
         for place in addrs:
-            a = (place.street, place.locality)
+            a = f'{place.street}, {place.locality}'
             addresses.append(a)
         return addresses
     
@@ -934,7 +937,7 @@ class BetterTreeView(NavigationView):
         <object class = "GtkToolButton">
             <property name = "icon-name">edit-find-symbolic</property>
             <property name = "action-name">win.findRelation</property>
-            <property name = "tooltip_text" translatable = "yes">""""""Find relation between two entities </property>
+            <property name = "tooltip_text" translatable = "yes">""""""Find relation between two entities (Click this again to reset) </property>
             <property name = "label" translatable="yes">Find Relation</property>
        </object>
    
@@ -977,41 +980,183 @@ class BetterTreeView(NavigationView):
             return
         
     def findRelation(self, *obj):
-        handles = {} #dictionary to store ids vs the handles, so we can find the persons details
-        dialog = Gtk.Dialog(title = "Find Relationship", parent = self.uistate.window)
-        content = dialog.get_content_area()
-        Gtk.Box(Gtk.Orientation.HORIZONTAL, spacing = 10)
+        global pathIso
+        global chosenPath
+        if pathIso == False:
+            handles = {} #dictionary to store ids vs the handles, so we can find the persons details
+            dialog = Gtk.Dialog(title = "Find Relationship", parent = self.uistate.window)
+            content = dialog.get_content_area()
+            Gtk.Box(Gtk.Orientation.HORIZONTAL, spacing = 10)
 
-        personOne = Gtk.ComboBoxText()
-        personTwo = Gtk.ComboBoxText()
-        content.pack_start(personOne, False, False, 10)
-        content.pack_start(personTwo, False, False, 10)
-        
-        count = 0
-        for person in self.dbstate.db.iter_people():
-            #print(vars(person.primary_name.surname_list[0]))
-            last = person.primary_name.surname_list[0]
-            count += 1
-            handles[count] = person.get_handle()
+            personOne = Gtk.ComboBoxText()
+            personTwo = Gtk.ComboBoxText()
+            content.pack_start(personOne, False, False, 10)
+            content.pack_start(personTwo, False, False, 10)
             
-            if last.prefix == "":
-                personOne.append_text(f'{count}. {person.primary_name.first_name} {last.surname}')
-                personTwo.append_text(f'{count}. {person.primary_name.first_name} {last.surname}')
-            else:
-                personOne.append_text(f'{count}. {person.primary_name.first_name} {last.prefix} {last.surname}')
-                personTwo.append_text(f'{count}. {person.primary_name.first_name} {last.prefix} {last.surname}')
+            count = 0
+            for person in self.dbstate.db.iter_people():
+                #print(vars(person.primary_name.surname_list[0]))
+                last = person.primary_name.surname_list[0]
+                count += 1
+                handles[count] = person.get_handle()
+                
+                if last.prefix == "":
+                    personOne.append_text(f'{count}. {person.primary_name.first_name} {last.surname}')
+                    personTwo.append_text(f'{count}. {person.primary_name.first_name} {last.surname}')
+                else:
+                    personOne.append_text(f'{count}. {person.primary_name.first_name} {last.prefix} {last.surname}')
+                    personTwo.append_text(f'{count}. {person.primary_name.first_name} {last.prefix} {last.surname}')
 
-        dialog.add_button("Find", Gtk.ResponseType.OK)
-        dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
-        dialog.show_all()
-        choice = dialog.run()
-        if choice == Gtk.ResponseType.CANCEL:
+            dialog.add_button("Find", Gtk.ResponseType.OK)
+            dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
+            dialog.show_all()
+            choice = dialog.run()
+            if choice == Gtk.ResponseType.CANCEL:
+                dialog.destroy()
+            elif choice == Gtk.ResponseType.OK:
+                print(handles)
+                if personOne.get_active_text() == None or personTwo.get_active_text() == None:
+                    pass
+                else:
+                    t = (personOne.get_active_text()[:personOne.get_active_text().find(".")]) #a test on how to retreive handles
+                    place = (personTwo.get_active_text()[:personTwo.get_active_text().find(".")])
+                    print(handles.get(int(t)))
+                    path = self.find_route(handles.get(int(t)), handles.get(int(place)))
+                    
+                    chosenPath = path
+                    self.build_tree()
+                    
+                    pathIso = True
             dialog.destroy()
-        elif choice == Gtk.ResponseType.OK:
-            print(handles)
-            t = (personOne.get_active_text()[:personOne.get_active_text().find(".")])
-            print(handles.get(int(t)))
-        dialog.destroy()
+        else:
+            
+            pathIso = False
+            
+            chosenPath = []
+            self.build_tree()
+
+    def find_route(self, handle1, handle2):
+        print(f"{handle1} --to be implemented-- {handle2}")
+        person1 = self.dbstate.db.get_person_from_handle(handle1)
+        person2 = self.dbstate.db.get_person_from_handle(handle2)
+        print("person: ",person1.primary_name.first_name)
+        print("person: ",person2.primary_name.first_name)
+        '''
+        x = person1.get_family_handle_list()
+        print(x)
+        
+        y=self.dbstate.db.get_family_from_handle(x[0])
+        yy = y.get_child_ref_list()
+        print("list",self.dbstate.db.get_person_from_handle(yy[0].get_reference_handle()).primary_name.first_name)
+        #print("test", self.dbstate.db.get_person_from_handle(y).primary_name.first_name)
+        '''
+        result = self.advanceTree(person1, [person1], person2)
+        
+        if result == []:
+            result = self.regressTree(person1, [person1], person2)
+            
+          
+    
+
+        return result      
+        #print("test", self.regressTree(person1,[person1], person2))
+        #self.advanceTree(person1,[])
+
+        #print(dir(person1))
+    def advanceTree(self, person, path, goal): #using recursive method to search through tree, this one advances forward through parents
+
+        if person.get_handle() == goal.get_handle():
+            return path
+        x2 = person.get_main_parents_family_handle()
+        if x2 == None:
+            return [] #returns path, if returning empty list search is unsuccessful
+        
+        dadHandle = self.dbstate.db.get_family_from_handle(x2).get_father_handle()
+        mumHandle = self.dbstate.db.get_family_from_handle(x2).get_mother_handle()
+
+        if dadHandle == None and mumHandle == None: #if at end of path terminate
+            return []
+
+        
+        if dadHandle == None:
+            mum = self.dbstate.db.get_person_from_handle(mumHandle)
+            path.append(mum)
+            res = self.advanceTree(mum, path, goal) #recurses with a new starting point, with an updated path
+            if res == []: 
+                return []
+            else:
+                return res
+        elif mumHandle == None:
+            dad = self.dbstate.db.get_person_from_handle(dadHandle)
+            path.append(dad)
+            res = self.advanceTree(dad, path, goal)
+            if res == []: 
+                return []
+            else:
+                return res
+        else:
+            dad = self.dbstate.db.get_person_from_handle(dadHandle)
+            mum = self.dbstate.db.get_person_from_handle(mumHandle)
+            mpath = path.copy()
+            mpath.append(mum)
+            path.append(dad)
+            res1 = self.advanceTree(mum, mpath, goal)
+            res2 = self.advanceTree(dad, path, goal)
+            if res1 == [] and res2 == []:
+                return []
+            elif res1 != []:
+                return res1
+            elif res2 != []:
+                return res2
+
+    def regressTree(self, person, path, goal):
+        x = person.get_family_handle_list()
+
+        if x == []:
+            return []
+        
+        y=self.dbstate.db.get_family_from_handle(x[0]) #due to this being built for pedigree chart, will only ever need first element
+        
+        yy = y.get_child_ref_list()
+        if yy == []:
+            return []
+        yy = yy[0].get_reference_handle()
+        #self.dbstate.db.get_person_from_handle(yy)
+        if yy ==  goal.get_handle():
+            path.append(self.dbstate.db.get_person_from_handle(yy))
+            return path
+        else:
+            target = path[-1]
+            
+            if y.get_father_handle() == target.get_handle():
+                mum = y.get_mother_handle()
+                mum =  self.dbstate.db.get_person_from_handle(mum)
+                mpath = path.copy()
+                mpath.append(mum)
+                advResult = self.advanceTree(mum, mpath, goal)
+            elif y.get_mother_handle() == target.get_handle():
+                dad = y.get_mother_handle()
+                dad =  self.dbstate.db.get_person_from_handle(dad)
+                dpath = path.copy()
+                dpath.append(dad)
+                advResult = self.advanceTree(dad, dpath, goal)
+
+            child = self.dbstate.db.get_person_from_handle(yy)
+            cpath = path.copy()
+            cpath.append(child)
+            regResult = self.regressTree(child, cpath, goal)
+
+            if regResult == [] and advResult == []:
+                return []
+            elif regResult != []:
+                return regResult
+            else:
+                return advResult
+           
+        
+        
+        self.dbstate.db.get_person_from_handle(yy)
+        print(self.dbstate.db.get_person_from_handle(y.get_mother_handle()).primary_name.first_name)
 
     def toggle_dark_mode(self, state, *obj): #steven
         global dark
@@ -1234,9 +1379,13 @@ class BetterTreeView(NavigationView):
             child.destroy()
         ##self.table = Gtk.Grid()
 
+        
         if person:
-            self.rebuild(self.table, pos, lst, self.force_size)
-
+            
+            if pathIso == True:
+                self.rebuild(savedList[0], savedList[1], savedList[2], savedList[3])
+            else:
+                self.rebuild(self.table, pos, lst, self.force_size)
     def rebuild(self, table_widget, positions, lst, size):
         """
         Function called from rebuild_trees.
@@ -1244,7 +1393,29 @@ class BetterTreeView(NavigationView):
         For style C position calculated, for others style use static positions.
         All display options process in this function.
         """
-
+        bPath = []
+        if chosenPath != []:
+            global savedList
+            savedList = [table_widget, positions, lst.copy(), size]    
+            for entry in lst:
+                found = False
+                for chosen in chosenPath:
+                    if entry and (entry[0].get_handle() == chosen.get_handle()):
+                        found = True
+                if found == True:
+                    bPath.append(entry)
+                else:
+                    bPath.append(None)
+            
+            
+            lst = bPath
+            print("list:", lst)
+            print(savedList)
+        elif savedList !=[]:
+            table_widget = savedList[0]
+            positions = savedList[1]
+            lst = savedList[2]
+            size = savedList[3]       
         # Calculate maximum table size
         xmax = 0
         ymax = 0
