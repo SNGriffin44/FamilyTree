@@ -223,7 +223,7 @@ class _PersonWidgetBase(Gtk.DrawingArea):
                 case 1:
                     image_path = f'{image_path}men-icon.png'
                 case 0:
-                    image_path = f'{image_path}women-icon.png'
+                    image_path = f'{image_path}women-icon.png' #end of added code snippet.
             
         return image_path
 
@@ -258,7 +258,7 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
         self.connect("draw", self.draw)
        
         self.text = ""
-        if self.person:
+        if self.person: #steven: beginning of added code block
             #print(self.person.get_note_list())
             #print(self.person.get_address_list())
             #a = self.person.get_address_list()[0]#"notes", dbstate.db.get_note_from_handle(self.person.get_note_list()[0]).get())
@@ -299,7 +299,8 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
         if person:
             self.bordercolor, self.bgcolor, = color_graph_box(alive, gender) #Steven: due to graph box being in different file, ive switched variables to still get benefits of gender colour, but applying to outline instead, trying to make tree more uniform
             #self.bordercolour= self.bgcolor    
-            self.bgcolor = "#f3f1eb" #one standard background colour for filled in entries
+            self.bgcolor = "#f3f1eb" #one standard background colour for filled in entries 
+            #end of added code block
         #print(color_graph_box(alive, gender))
         if tags and person:
             for tag_handle in person.get_tag_list():
@@ -334,7 +335,7 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
         self.context = None
         self.textlayout = None
 
-    def retrieve_notes(self, dbstate): #steven
+    def retrieve_notes(self, dbstate): #steven function
         handles = self.person.get_note_list()
         notes = []
         for note in handles:
@@ -344,7 +345,7 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
         
         return notes
     
-    def retieve_addr(self): #steven
+    def retieve_addr(self): #steven function
         addrs = self.person.get_address_list()
         addresses = []
         for place in addrs:
@@ -352,7 +353,7 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
             addresses.append(a)
         return addresses
     
-    def retrieve_job(self): #steven
+    def retrieve_job(self): #steven function
         attrs = self.person.get_attribute_list()
         for attr in attrs:
             if attr.get_type() == "Occupation":
@@ -881,7 +882,7 @@ class BetterTreeView(NavigationView):
         <property name="tooltip_text" translatable="yes">"""
         """Go to the previous object in the history</property>
         <property name="label" translatable="yes">_Back</property>
-        <property name="use-underline">True</property>
+        <property name="use-underline">True</property> 
       </object>
       <packing>
         <property name="homogeneous">False</property>
@@ -946,7 +947,7 @@ class BetterTreeView(NavigationView):
 
     </placeholder>
     """,
-    ]
+    ] #Steven, added segments noted by Find Relation, Expand, Darkmode
 
     def define_actions(self):
         """
@@ -966,6 +967,7 @@ class BetterTreeView(NavigationView):
         self._add_action("FilterEdit", self.cb_filter_editor)
         self._add_action("F2", self.kb_goto_home, "F2")
         self._add_action("PRIMARY-J", self.jump, "<PRIMARY>J")
+        #steven: below actions added
         self._add_action("Darkmode", self.toggle_dark_mode)
         self._add_action("Expand", self.toggle_expand)
         self._add_action("findRelation", self.findRelation)
@@ -979,7 +981,7 @@ class BetterTreeView(NavigationView):
         except WindowActiveError:
             return
         
-    def findRelation(self, *obj):
+    def findRelation(self, *obj): #Steven function
         global pathIso
         global chosenPath
         if pathIso == False:
@@ -1035,7 +1037,7 @@ class BetterTreeView(NavigationView):
             chosenPath = []
             self.build_tree()
 
-    def find_route(self, handle1, handle2):
+    def find_route(self, handle1, handle2): #steven function
         print(f"{handle1} --to be implemented-- {handle2}")
         person1 = self.dbstate.db.get_person_from_handle(handle1)
         person2 = self.dbstate.db.get_person_from_handle(handle2)
@@ -1063,7 +1065,7 @@ class BetterTreeView(NavigationView):
         #self.advanceTree(person1,[])
 
         #print(dir(person1))
-    def advanceTree(self, person, path, goal): #using recursive method to search through tree, this one advances forward through parents
+    def advanceTree(self, person, path, goal): #steven function: using recursive method to search through tree, this one advances forward through parents
 
         if person.get_handle() == goal.get_handle():
             return path
@@ -1109,7 +1111,7 @@ class BetterTreeView(NavigationView):
             elif res2 != []:
                 return res2
 
-    def regressTree(self, person, path, goal):
+    def regressTree(self, person, path, goal): #steven function
         x = person.get_family_handle_list()
 
         if x == []:
@@ -1158,7 +1160,7 @@ class BetterTreeView(NavigationView):
         self.dbstate.db.get_person_from_handle(yy)
         print(self.dbstate.db.get_person_from_handle(y.get_mother_handle()).primary_name.first_name)
 
-    def toggle_dark_mode(self, state, *obj): #steven
+    def toggle_dark_mode(self, state, *obj): #steven function
         global dark
         dark = not dark
        
@@ -1172,7 +1174,7 @@ class BetterTreeView(NavigationView):
         self.build_tree()
         #print(colorScheme)
 
-    def toggle_expand(self, state, *obj): #steven
+    def toggle_expand(self, state, *obj): #steven function 
         global expanded
         expanded = not expanded
 
@@ -1673,6 +1675,15 @@ class BetterTreeView(NavigationView):
             ):
                 if lst[i] and lst[i][2]:
                     text = self.format_helper.format_relation(lst[i][2], 1, True)
+                    for re in lst[i][2].event_ref_list:
+                        #steven: code has been adapted to include divorce, the marriage was already included.
+                        event = self.dbstate.db.get_event_from_handle(re.ref)
+                        if event.get_type() == "Divorce":
+                            divorce = event.get_date_object()
+                            text = f'{text} o/o {divorce.get_text()}'
+                            break #break to prevent multiple divorce dates
+                            
+                    
                     
                 else:
                     text = " "
