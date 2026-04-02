@@ -100,15 +100,19 @@ _CREM = _("crem.", "short for cremated")
 _MALE = "♂"
 _FEMALE = "♀"
 
-DARKMODE = {
-    "background": b"* { background-color: #3b3b3b; }",
-    "line": (1,1,1) 
+DARKMODE = { #steven: darkmode and lightmode dictionarys added
+    "background": b"* { background-color: #2b2d31; }",
+    "line": (0.45,0.45,0.45), 
+    "box": "#2c2a28",
+    "marry" : Gdk.RGBA(1,1,1,1)
 
 }
 
 LIGHTMODE = {
     "background": b"*{ background-color: #F6F5F4; }",
-    "line": (0,0,0)
+    "line": (0,0,0),
+    "box": "#f3f1eb",
+    "marry" : Gdk.RGBA(0,0,0,1)
 } 
 pathIso = False
 savedList = []
@@ -299,7 +303,7 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
         if person:
             self.bordercolor, self.bgcolor, = color_graph_box(alive, gender) #Steven: due to graph box being in different file, ive switched variables to still get benefits of gender colour, but applying to outline instead, trying to make tree more uniform
             #self.bordercolour= self.bgcolor    
-            self.bgcolor = "#f3f1eb" #one standard background colour for filled in entries 
+            self.bgcolor =  colorScheme.get("box") #one standard background colour for filled in entries 
             #end of added code block
         #print(color_graph_box(alive, gender))
         if tags and person:
@@ -1680,18 +1684,20 @@ class BetterTreeView(NavigationView):
                         event = self.dbstate.db.get_event_from_handle(re.ref)
                         if event.get_type() == "Divorce":
                             divorce = event.get_date_object()
-                            text = f'{text} o/o {divorce.get_text()}'
+                            text = f'{text} o/o {divorce.get_text()}' 
                             break #break to prevent multiple divorce dates
                             
                     
                     
                 else:
                     text = " "
+
                 label = Gtk.Label(label=text)
                 label.set_justify(Gtk.Justification.LEFT)
                 label.set_use_markup(True)
                 label.set_line_wrap(True)
                 label.set_halign(Gtk.Align.START)
+                label.override_color(Gtk.StateFlags.NORMAL, colorScheme.get("marry"))
                
                 if self.tree_style in [0, 2]:
                     x_pos = (1 + _width) * (level + 1) + 1
