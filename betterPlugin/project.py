@@ -295,7 +295,12 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
             if (not expanded):
                 self.text =f'{temp[1]} {final}' #Steven: used f string to reverse order of names to more forename then surname
             else:
-                 exp = f'💼 {self.retrieve_job()}\n📍 {",".join(self.retieve_addr())}\n{self.retrieve_notes(dbstate)}'
+                 notes = self.retrieve_notes(dbstate)
+                 if notes != []:
+                     
+                    exp = f'💼 {self.retrieve_job()}\n📍 {",".join(self.retieve_addr())}\n✍︎ {notes[0]}'
+                 else:
+                    exp = f'💼 {self.retrieve_job()}\n📍 {",".join(self.retieve_addr())}\n✍︎ '
                  self.text = f'{temp[1]} {final}{exp}'
         else:
             gender = None
@@ -329,7 +334,7 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
             #print(os.path.exists(image_path))
             if image_path and os.path.exists(image_path):
                 with open(image_path, "rb") as image:
-                    print("supp")
+                    
                     self.img_surf = cairo.ImageSurface.create_from_png(image)
 
         # enable mouse-over
@@ -341,6 +346,7 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
 
     def retrieve_notes(self, dbstate): #steven function
         handles = self.person.get_note_list()
+        print("notes", handles)
         notes = []
         for note in handles:
             n = dbstate.db.get_note_from_handle(note)
@@ -351,14 +357,16 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
     
     def retieve_addr(self): #steven function
         addrs = self.person.get_address_list()
+        print("addr", addrs)
         addresses = []
         for place in addrs:
-            a = f'{place.street}, {place.locality}'
+            a = f'{place.street}, {place.city}'
             addresses.append(a)
         return addresses
     
     def retrieve_job(self): #steven function
         attrs = self.person.get_attribute_list()
+        print("job", attrs)
         for attr in attrs:
             if attr.get_type() == "Occupation":
                 return attr.get_value()
@@ -1008,7 +1016,7 @@ class BetterTreeView(NavigationView):
                 
                 if last.prefix == "":
                     personOne.append_text(f'{count}. {person.primary_name.first_name} {last.surname}')
-                    personTwo.append_text(f'{count}. {person.primary_name.first_name} {last.surname}')
+                    personTwo.append_text(f'{count}. {person.primary_name.first_name} {last.surname}') #steven: numbering the records for visual appeal and as a way to retrieve the handle from the dictionary
                 else:
                     personOne.append_text(f'{count}. {person.primary_name.first_name} {last.prefix} {last.surname}')
                     personTwo.append_text(f'{count}. {person.primary_name.first_name} {last.prefix} {last.surname}')
@@ -1020,29 +1028,35 @@ class BetterTreeView(NavigationView):
             if choice == Gtk.ResponseType.CANCEL:
                 dialog.destroy()
             elif choice == Gtk.ResponseType.OK:
-                print(handles)
+                
                 if personOne.get_active_text() == None or personTwo.get_active_text() == None:
                     pass
                 else:
                     t = (personOne.get_active_text()[:personOne.get_active_text().find(".")]) #a test on how to retreive handles
                     place = (personTwo.get_active_text()[:personTwo.get_active_text().find(".")])
-                    print(handles.get(int(t)))
+                    
                     path = self.find_route(handles.get(int(t)), handles.get(int(place)))
                     
                     chosenPath = path
+
+                    self.show_unknown_people = False 
+                    
                     self.build_tree()
                     
                     pathIso = True
+                    
             dialog.destroy()
         else:
             
             pathIso = False
             
             chosenPath = []
+            self.show_unknown_people = True
+            
             self.build_tree()
 
     def find_route(self, handle1, handle2): #steven function
-        print(f"{handle1} --to be implemented-- {handle2}")
+        
         person1 = self.dbstate.db.get_person_from_handle(handle1)
         person2 = self.dbstate.db.get_person_from_handle(handle2)
         print("person: ",person1.primary_name.first_name)
@@ -1061,7 +1075,7 @@ class BetterTreeView(NavigationView):
         if result == []:
             result = self.regressTree(person1, [person1], person2)
             
-          
+        
     
 
         return result      
@@ -1086,16 +1100,18 @@ class BetterTreeView(NavigationView):
         
         if dadHandle == None:
             mum = self.dbstate.db.get_person_from_handle(mumHandle)
-            path.append(mum)
-            res = self.advanceTree(mum, path, goal) #recurses with a new starting point, with an updated path
+            mpath = path.copy()
+            mpath.append(mum)
+            res = self.advanceTree(mum, mpath, goal) #recurses with a new starting point, with an updated path
             if res == []: 
                 return []
             else:
                 return res
         elif mumHandle == None:
             dad = self.dbstate.db.get_person_from_handle(dadHandle)
-            path.append(dad)
-            res = self.advanceTree(dad, path, goal)
+            dpath = path.copy()
+            dpath.append(dad)
+            res = self.advanceTree(dad, dpath, goal)
             if res == []: 
                 return []
             else:
@@ -1104,10 +1120,12 @@ class BetterTreeView(NavigationView):
             dad = self.dbstate.db.get_person_from_handle(dadHandle)
             mum = self.dbstate.db.get_person_from_handle(mumHandle)
             mpath = path.copy()
+            dpath = path.copy()
             mpath.append(mum)
-            path.append(dad)
+            
+            dpath.append(dad)
             res1 = self.advanceTree(mum, mpath, goal)
-            res2 = self.advanceTree(dad, path, goal)
+            res2 = self.advanceTree(dad, dpath, goal)
             if res1 == [] and res2 == []:
                 return []
             elif res1 != []:
@@ -1122,7 +1140,7 @@ class BetterTreeView(NavigationView):
             return []
         
         y=self.dbstate.db.get_family_from_handle(x[0]) #due to this being built for pedigree chart, will only ever need first element
-        
+        advResult = []
         yy = y.get_child_ref_list()
         if yy == []:
             return []
@@ -1132,20 +1150,23 @@ class BetterTreeView(NavigationView):
             path.append(self.dbstate.db.get_person_from_handle(yy))
             return path
         else:
-            target = path[-1]
+            target = path[-1] #varibale to check where the tree has last been
             
             if y.get_father_handle() == target.get_handle():
                 mum = y.get_mother_handle()
-                mum =  self.dbstate.db.get_person_from_handle(mum)
-                mpath = path.copy()
-                mpath.append(mum)
-                advResult = self.advanceTree(mum, mpath, goal)
+                if mum != None:
+                    mum =  self.dbstate.db.get_person_from_handle(mum)
+                    mpath = path.copy()
+                    mpath.append(mum)
+                    advResult = self.advanceTree(mum, mpath, goal)
             elif y.get_mother_handle() == target.get_handle():
-                dad = y.get_mother_handle()
-                dad =  self.dbstate.db.get_person_from_handle(dad)
-                dpath = path.copy()
-                dpath.append(dad)
-                advResult = self.advanceTree(dad, dpath, goal)
+
+                dad = y.get_father_handle()
+                if dad != None:
+                    dad =  self.dbstate.db.get_person_from_handle(dad)
+                    dpath = path.copy()
+                    dpath.append(dad)
+                    advResult = self.advanceTree(dad, dpath, goal)
 
             child = self.dbstate.db.get_person_from_handle(yy)
             cpath = path.copy()
@@ -1403,7 +1424,7 @@ class BetterTreeView(NavigationView):
         if chosenPath != []:
             global savedList
             savedList = [table_widget, positions, lst.copy(), size]    
-            for entry in lst:
+            for entry in lst: #steven: filtering elements to only be from the chosen path, this was needed as lst is more complex and has data needed to construct tree that chosenPath does not
                 found = False
                 for chosen in chosenPath:
                     if entry and (entry[0].get_handle() == chosen.get_handle()):
@@ -1415,8 +1436,7 @@ class BetterTreeView(NavigationView):
             
             
             lst = bPath
-            print("list:", lst)
-            print(savedList)
+            
         elif savedList !=[]:
             table_widget = savedList[0]
             positions = savedList[1]
