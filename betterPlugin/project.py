@@ -37,6 +37,7 @@ from html import escape
 import math
 import os
 import pickle
+import time
 
 # -------------------------------------------------------------------------
 #
@@ -272,14 +273,15 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
             )
             gender = self.person.get_gender()
             temp = self.text.split(',')
+            first = self.person.primary_name.first_name
             #print(temp)
             x = temp[1].find('\n') #Steven: when switching name order, the forename came packaged with the birth and death date, which seems to happen in an external file to this, so I've isolated the cutoff points and switched them to be with the surname.
             match gender:
                 case 1:
-                    temp[0] = f'{temp[0]} <span foreground = "Blue">{_MALE}</span>'
+                    temp[0] = f'{temp[0]} \u00A0<span foreground = "Blue">{_MALE}</span>'
                     self.bordercolor = "#b8cee6"
                 case 0:
-                    temp[0] = f'{temp[0]} <span foreground = "Deep Pink">{_FEMALE}</span>'
+                    temp[0] = f'{temp[0]} \u00A0<span foreground = "Deep Pink">{_FEMALE}</span>'
                     self.bordercolor = "#feccf0"
             temp[0] = f'{temp[0]}{temp[1][x:]}'
             temp[1] = temp[1][:x]
@@ -417,8 +419,8 @@ class PersonBoxWidgetCairo(_PersonWidgetBase):
             context.close_path()
 
         # pylint: disable-msg=E1101
-        minw = 100
-        minh = 80
+        minw = 80
+        minh = 20
         alw = self.get_allocated_width()
         alh = self.get_allocated_height()
         if not self.textlayout:
@@ -931,7 +933,7 @@ class BetterTreeView(NavigationView):
         <property name = "icon-name">weather-clear-night</property>
         <property name = "action-name">win.Darkmode</property>
         <property name = "tooltip_text" translatable = "yes">""""""Switch display to darkmode </property>
-        <property name = "label" translatable="yes">Darkmode</property>
+        <property name = "label" translatable="yes">Dark Mode</property>
        </object>
    
     </child>
@@ -1086,6 +1088,7 @@ class BetterTreeView(NavigationView):
     def advanceTree(self, person, path, goal): #steven function: using recursive method to search through tree, this one advances forward through parents
 
         if person.get_handle() == goal.get_handle():
+            print("FOUNDUIBEGINWODSBNDSWDNOIERFJ")
             return path
         x2 = person.get_main_parents_family_handle()
         if x2 == None:
@@ -1124,6 +1127,8 @@ class BetterTreeView(NavigationView):
             mpath.append(mum)
             
             dpath.append(dad)
+            print(mum.primary_name.first_name)
+            print(dad.primary_name.first_name)
             res1 = self.advanceTree(mum, mpath, goal)
             res2 = self.advanceTree(dad, dpath, goal)
             if res1 == [] and res2 == []:
@@ -1274,6 +1279,7 @@ class BetterTreeView(NavigationView):
         Rebuild the tree with the given person handle as the root.
         """
         self.dirty = True
+        start = time.time()
         if handle:
             person = self.dbstate.db.get_person_from_handle(handle)
             if person:
@@ -1283,6 +1289,8 @@ class BetterTreeView(NavigationView):
         else:
             self.rebuild_trees(None)
         self.uistate.modify_statusbar(self.dbstate)
+        end = time.time()
+        print("runtime: ", end-start)
 
     def person_rebuild_bm(self, dummy=None):
         """Large change to person database"""
